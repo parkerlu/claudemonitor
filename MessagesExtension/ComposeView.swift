@@ -45,8 +45,9 @@ struct ComposeView: View {
         // placeholder wash out completely. This is a text tool, so legibility
         // beats the floating look.
         .background(Color(uiColor: .systemBackground).ignoresSafeArea())
-        // 刻意不自动聚焦：聚焦会拉起键盘，而 compact 抽屉占的就是键盘的位置，
-        // 系统只能把扩展展开成全屏。不聚焦才能真正停在抽屉态。
+        // 开局就展开成全屏，所以直接聚焦，省掉一次点击。
+        // 若用户把抽屉拖回去，就不再抢焦点 —— 否则键盘会立刻又把它撑开。
+        .onAppear { if !isCompact { chineseFocused = true } }
     }
 
     // MARK: Tone

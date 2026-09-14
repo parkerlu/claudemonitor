@@ -52,15 +52,27 @@ final class MessagesViewController: MSMessagesAppViewController {
         viewModel.settings = SettingsStore.load()
     }
 
-    // Open in the compact drawer so the conversation stays visible, and never
-    // expand on our own.
+    // Go straight to full screen on open.
     //
-    // Measured 2026-09-14: focusing the text field is enough to expand us. The
-    // drawer occupies the keyboard's slot, so Messages cannot show both and
-    // switches to full screen the moment a keyboard is needed. Apple's own
-    // `dismiss()` is documented as "dismiss the extension and present the
-    // keyboard" — the two states are mutually exclusive by design. So typing
-    // and seeing the transcript cannot be had at once; do not try again.
+    // Measured 2026-09-14: the compact drawer occupies the keyboard's slot, so
+    // Messages cannot show both and expands the moment a keyboard is needed —
+    // Apple documents `dismiss()` as "dismiss the extension and present the
+    // keyboard", the two states are mutually exclusive by design. Since this is
+    // a typing surface, arriving in the drawer only buys a glance at the
+    // transcript before the first tap expands us anyway. Expanding up front
+    // spends that tap better. Requested explicitly rather than left to the
+    // keyboard's side effect, so there is no flash of the drawer first.
+    //
+    // The drawer is not lost: dragging the handle down still collapses us, and
+    // `didTransition` re-lays out for it. We do not re-expand afterwards, so
+    // that choice sticks for the rest of the session.
+    override func didBecomeActive(with conversation: MSConversation) {
+        super.didBecomeActive(with: conversation)
+        if presentationStyle == .compact {
+            requestPresentationStyle(.expanded)
+        }
+    }
+
     override func didTransition(to presentationStyle: MSMessagesAppPresentationStyle) {
         super.didTransition(to: presentationStyle)
         hostingController.rootView = makeRoot(isCompact: presentationStyle == .compact)
