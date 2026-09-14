@@ -1,0 +1,71 @@
+# XcodeGen project definition.
+#
+#   brew install xcodegen && xcodegen generate && open EnDraft.xcodeproj
+#
+# Change PRODUCT_BUNDLE_IDENTIFIER and the App Group below to your own before
+# building — the placeholders will not sign.
+
+name: EnDraft
+options:
+  bundleIdPrefix: com.example.endraft
+  deploymentTarget:
+    iOS: "17.0"
+  createIntermediateGroups: true
+
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    MARKETING_VERSION: "1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    DEVELOPMENT_TEAM: ""          # ← your 10-character Team ID
+    CODE_SIGN_STYLE: Automatic
+    TARGETED_DEVICE_FAMILY: "1"   # iPhone only
+
+targets:
+
+  EnDraft:
+    type: application
+    platform: iOS
+    sources:
+      - path: App
+      - path: Shared
+    info:
+      path: App/Info.plist
+      properties:
+        CFBundleDisplayName: EnDraft
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.endraft
+    entitlements:
+      path: App/EnDraft.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.com.example.endraft
+    dependencies:
+      - target: EnDraftMessages
+        embed: true
+
+  EnDraftMessages:
+    type: app-extension.messages
+    platform: iOS
+    sources:
+      - path: MessagesExtension
+      - path: Shared
+    info:
+      path: MessagesExtension/Info.plist
+      properties:
+        CFBundleDisplayName: EnDraft
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.message-payload-provider
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).MessagesViewController
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.endraft.messages
+    entitlements:
+      path: MessagesExtension/EnDraftMessages.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.com.example.endraft
