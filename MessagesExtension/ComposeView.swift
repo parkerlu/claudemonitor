@@ -2,8 +2,10 @@ import SwiftUI
 
 /// The composer shown inside the Messages app drawer.
 ///
-/// Layout is deliberately top-heavy: the Chinese field sits at the top so the
-/// system keyboard (and its dictation key) doesn't cover the English result.
+/// Layout mirrors Messages itself: the result you read sits up in the content
+/// area, the field you type into is pinned to the bottom just above the
+/// keyboard. Tone chips sit directly over the input because that is where your
+/// thumb already is, and they change the card above them.
 struct ComposeView: View {
     @ObservedObject var viewModel: ComposeViewModel
 
@@ -18,17 +20,20 @@ struct ComposeView: View {
 
     var body: some View {
         VStack(spacing: 12) {
-            toneChips
             contextRow
-            chineseField
             englishCard
+
+            Spacer(minLength: 0)
+
             if let error = viewModel.errorMessage {
                 errorRow(error)
             }
-            Spacer(minLength: 0)
+            toneChips
+            chineseField
         }
         .padding(.horizontal, 16)
         .padding(.top, 12)
+        .padding(.bottom, 8)
         .onAppear {
             onRequestExpand()
             chineseFocused = true

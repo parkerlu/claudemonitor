@@ -7,7 +7,7 @@ struct SettingsView: View {
 
     var body: some View {
         Form {
-            Section("翻译服务") {
+            Section {
                 Picker("服务商", selection: $settings.provider) {
                     ForEach(ProviderKind.allCases) { kind in
                         Text(kind.label).tag(kind)
@@ -34,6 +34,8 @@ struct SettingsView: View {
                 SecureField("API Key", text: $settings.apiKey)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
+            } header: {
+                Text("翻译服务")
             } footer: {
                 Text("Key 只保存在本机的 App Group 里，不会离开这台设备。")
             }
@@ -59,7 +61,7 @@ struct SettingsView: View {
                 }
             }
 
-            Section("默认行为") {
+            Section {
                 Picker("默认语气", selection: $settings.defaultTone) {
                     ForEach(Tone.allCases) { tone in
                         Text(tone.label).tag(tone)
@@ -74,6 +76,8 @@ struct SettingsView: View {
                     in: 150...1500,
                     step: 50
                 )
+            } header: {
+                Text("默认行为")
             } footer: {
                 Text("回译会把英文再直译回中文，用来确认意思没跑偏。它会多花一次请求。")
             }

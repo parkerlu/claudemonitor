@@ -1,6 +1,10 @@
 # XcodeGen output — regenerate with `xcodegen generate`
 *.xcodeproj/
 *.xcworkspace/
+App/Info.plist
+App/EnDraft.entitlements
+MessagesExtension/Info.plist
+MessagesExtension/EnDraftMessages.entitlements
 
 .DS_Store
 build/

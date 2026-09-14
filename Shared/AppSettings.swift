@@ -86,7 +86,7 @@ struct GlossaryEntry: Codable, Sendable, Equatable, Identifiable {
 /// Read/write access to the shared settings blob.
 enum SettingsStore {
     /// Must match the App Group configured on both targets in `project.yml`.
-    static let appGroupID = "group.com.example.endraft"
+    static let appGroupID = "group.com.parkerlu.endraft"
 
     private static let key = "app_settings_v1"
 
