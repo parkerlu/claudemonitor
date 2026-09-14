@@ -45,9 +45,12 @@ struct ComposeView: View {
         // placeholder wash out completely. This is a text tool, so legibility
         // beats the floating look.
         .background(Color(uiColor: .systemBackground).ignoresSafeArea())
-        // 开局就展开成全屏，所以直接聚焦，省掉一次点击。
-        // 若用户把抽屉拖回去，就不再抢焦点 —— 否则键盘会立刻又把它撑开。
-        .onAppear { if !isCompact { chineseFocused = true } }
+        // 无条件聚焦。别加 `if !isCompact` —— onAppear 跑在 didBecomeActive 之前，
+        // 那时 presentationStyle 还是 compact，判断永远为假，焦点永远拿不到，
+        // 于是键盘不弹、扩展也就撑不开。而撑开它的恰恰是键盘本身：
+        // didBecomeActive 里的 requestPresentationStyle(.expanded) 会被 Messages 忽略。
+        // onAppear 只触发一次，所以用户之后把抽屉拖回去，我们不会再抢焦点。
+        .onAppear { chineseFocused = true }
     }
 
     // MARK: Tone
