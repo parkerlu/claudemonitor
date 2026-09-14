@@ -9,7 +9,7 @@ import UIKit
 /// 1. There is no way to read what the user has already typed in the Messages
 ///    input field, so all typing has to happen inside this view controller.
 /// 2. `insertText` *appends* to the input field and there is no API to clear it,
-///    so we insert once and then collapse, leaving the send tap to the user.
+///    so we insert once and then dismiss, leaving the send tap to the user.
 final class MessagesViewController: MSMessagesAppViewController {
 
     private var viewModel: ComposeViewModel!
@@ -68,9 +68,17 @@ final class MessagesViewController: MSMessagesAppViewController {
         conversation.insertText(text) { [weak self] error in
             DispatchQueue.main.async {
                 guard let self else { return }
-                if error != nil { return }
+                if let error {
+                    // Otherwise the tap looks like it did nothing at all.
+                    self.viewModel.reportInsertFailure(error)
+                    return
+                }
                 self.viewModel.reset()
-                self.requestPresentationStyle(.compact)
+                // Not requestPresentationStyle(.compact) — we already open in the
+                // drawer, so that would be a no-op. `dismiss()` closes the
+                // extension outright and raises the keyboard, which puts the
+                // filled-in field and the send button straight under your thumb.
+                self.dismiss()
             }
         }
     }

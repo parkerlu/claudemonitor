@@ -206,6 +206,12 @@ final class ComposeViewModel: ObservableObject {
         english = text
     }
 
+    /// The host failed to hand the text to the input field. Rare, but silence
+    /// here reads as a dead tap.
+    func reportInsertFailure(_ error: Error) {
+        errorMessage = "没能填进输入框：\(error.localizedDescription)"
+    }
+
     /// Models occasionally wrap the whole reply in quotes despite being told not
     /// to. Strip them rather than shipping stray punctuation into the message.
     private static func stripWrappingQuotes(_ text: String) -> String {
