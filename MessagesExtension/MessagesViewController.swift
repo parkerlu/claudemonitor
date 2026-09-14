@@ -20,15 +20,9 @@ final class MessagesViewController: MSMessagesAppViewController {
 
         viewModel = ComposeViewModel(settings: SettingsStore.load())
 
-        let root = ComposeView(
-            viewModel: viewModel,
-            onInsert: { [weak self] text in self?.insert(text) },
-            onRequestExpand: { [weak self] in
-                self?.requestPresentationStyle(.expanded)
-            }
+        hostingController = UIHostingController(
+            rootView: makeRoot(isCompact: presentationStyle == .compact)
         )
-
-        hostingController = UIHostingController(rootView: root)
         addChild(hostingController)
         hostingController.view.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(hostingController.view)
@@ -41,6 +35,14 @@ final class MessagesViewController: MSMessagesAppViewController {
         hostingController.didMove(toParent: self)
     }
 
+    private func makeRoot(isCompact: Bool) -> ComposeView {
+        ComposeView(
+            viewModel: viewModel,
+            isCompact: isCompact,
+            onInsert: { [weak self] text in self?.insert(text) }
+        )
+    }
+
     // MARK: - Conversation lifecycle
 
     override func willBecomeActive(with conversation: MSConversation) {
@@ -50,14 +52,13 @@ final class MessagesViewController: MSMessagesAppViewController {
         viewModel.settings = SettingsStore.load()
     }
 
-    override func didBecomeActive(with conversation: MSConversation) {
-        super.didBecomeActive(with: conversation)
-        // The compact drawer is only tall enough for a couple of rows, and this
-        // app is a typing surface — go straight to expanded on open. We only do
-        // it here, not in didTransition, so collapsing afterwards still works.
-        if presentationStyle == .compact {
-            requestPresentationStyle(.expanded)
-        }
+    // Stay in the compact drawer on open. Expanding would take over the whole
+    // screen, and Messages only offers compact or full — there is no
+    // half-height style — so compact is the only way to keep the conversation
+    // you are replying to visible. Dragging the drawer up still expands.
+    override func didTransition(to presentationStyle: MSMessagesAppPresentationStyle) {
+        super.didTransition(to: presentationStyle)
+        hostingController.rootView = makeRoot(isCompact: presentationStyle == .compact)
     }
 
     // MARK: - Insertion

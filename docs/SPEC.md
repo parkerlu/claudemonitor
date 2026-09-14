@@ -82,7 +82,10 @@
 - 端侧、免费、离线、无 key、几十毫秒
 - **只翻译，不润色**：给不了语气控制、认不了术语表、不认上下文
 - 首次使用需要下载语言包，会弹系统提示
-- 是 SwiftUI 绑定的（靠 `.translationTask` 修饰符 vend 出 session），不是随处可调的裸 API
+- ~~是 SwiftUI 绑定的，不是随处可调的裸 API~~ —— **这条已过时**。iOS 26 SDK 起有
+  `TranslationSession.init(installedSource:target:)` 和 `translate(_:) async throws`，
+  可以脱离 `.translationTask` 直接构造。前提是语言包已下载（用
+  `LanguageAvailability().status(from:to:)` 查，返回 `.installed` / `.supported` / `.unsupported`）
 
 **定位：草稿层 + 彻底离线时的兜底。不能作为唯一引擎。**
 
@@ -96,7 +99,13 @@
   - 有内容安全护栏，偶尔会拒答，必须有降级路径
   - 质量明显不如云端大模型，长句和微妙语气上差距会显出来
 
-**定位：离线模式的主力；在线时作为云端到达前的更好草稿。**
+- **流式是累积快照，不是增量 delta**：`ResponseStream.Element == Snapshot`，
+  `Snapshot.content` 是 `PartiallyGenerated`。直接往 `TranslationProvider` 协议里灌会重复拼接，
+  必须自己做差分（2026-09-14 从 iOS 26.5 SDK 的 swiftinterface 确认）
+
+> ⛔️ **2026-09-14 实测：本项目的目标设备上不可用，Tier 1 已放弃。** 详见 §7。
+
+**定位：~~离线模式的主力~~ —— 已放弃。**
 
 ### Tier 2 — DeepSeek / MiniMax（云端润色）
 
@@ -107,6 +116,10 @@
 **定位：默认的最终结果。**
 
 ### 降级顺序
+
+> **2026-09-14 更新：实测后本项目只保留 Tier 2（DeepSeek）。** Tier 1 机型不合格，
+> Tier 0 只能直译（给不了语气控制、术语表、上下文），而"得体"正是这个项目存在的理由。
+> Parker 决定不做端侧层。下面的阶梯保留作为将来换设备时的参考。
 
 ```
 在线 + 配了 key   →  Tier 0 出草稿  →  Tier 2 替换
@@ -197,6 +210,25 @@ protocol TranslationProvider: Sendable {
 | 3 | 扩展里能否**录音 + 语音识别** | 扩展里跑 `AVAudioEngine` + `SFSpeechRecognizer` | 方案 B 取消，只保留系统键盘听写（方案 A 反正不受影响） |
 | 4 | iMessage 扩展的实际**内存上限** | 逐步加载，看什么时候被 jettison | 决定端侧模型能不能留在扩展里 |
 | 5 | MiniMax 的实际 endpoint / 模型名 | 拿真 key curl 一次 | 改 `AppSettings` 里的默认值 |
+
+### 实测结论（2026-09-14，iPhone 16 Pro / iOS 27.0 / Xcode 26.6 SDK 26.5）
+
+探针同时跑在容器 App 和扩展里，结果写进 App Group 再由 App 打到 stdout
+（macOS 的 `log` 已不支持从连接的 iOS 设备取流，扩展也无法从 Mac 启动，这是唯一可行的读法）。
+
+| # | 结论 | 证据 |
+|---|---|---|
+| 1 | `Translation` **框架和机型都支持**，但中文语言包未下载 | `LanguageAvailability.status(zh-Hans→en)` = `.supported` |
+| 2 | `FoundationModels` **不可用，且修不了** | `availability` = `.unavailable(.deviceNotEligible)` |
+| 4 | 容器 App 空载 10.2 MB，跑完探针 22.8 MB | `task_vm_info.phys_footprint` |
+
+第 2 条要特别说明：返回的是 `deviceNotEligible` 而不是 `appleIntelligenceNotEnabled`，
+SDK 里这是两个不同的枚举值 —— 只是没开开关会报后者。报前者说明系统认为设备不具备资格。
+iPhone 16 Pro 硬件是支持 Apple Intelligence 的，设置里也没有「Apple 智能与 Siri」这一项，
+所以是**区域限制**。要绕开得改整机的语言与地区设置，代价大于收益。
+
+**由此的决定：放弃端侧层（M3），只用 DeepSeek。** 第 3、5 条未验证，因为语音和 MiniMax
+都还没轮到。
 
 第 1、2 条我无法从文档确认，Apple 没有明确说明 App Extension 的支持情况。**必须实测。**
 

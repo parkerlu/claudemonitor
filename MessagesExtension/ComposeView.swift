@@ -9,21 +9,26 @@ import SwiftUI
 struct ComposeView: View {
     @ObservedObject var viewModel: ComposeViewModel
 
+    /// True while we're in the bottom drawer rather than full screen. The
+    /// drawer is short, so anything non-essential is dropped there.
+    var isCompact: Bool
+
     /// Called when you tap the English card. Hands the text to the Messages
     /// input field.
     var onInsert: (String) -> Void
 
-    /// Ask the host to expand so there's room to type.
-    var onRequestExpand: () -> Void
-
     @FocusState private var chineseFocused: Bool
 
     var body: some View {
-        VStack(spacing: 12) {
-            contextRow
+        VStack(spacing: isCompact ? 8 : 12) {
+            if !isCompact {
+                contextRow
+            }
             englishCard
 
-            Spacer(minLength: 0)
+            if !isCompact {
+                Spacer(minLength: 0)
+            }
 
             if let error = viewModel.errorMessage {
                 errorRow(error)
@@ -32,12 +37,9 @@ struct ComposeView: View {
             chineseField
         }
         .padding(.horizontal, 16)
-        .padding(.top, 12)
+        .padding(.top, isCompact ? 8 : 12)
         .padding(.bottom, 8)
-        .onAppear {
-            onRequestExpand()
-            chineseFocused = true
-        }
+        .onAppear { chineseFocused = true }
     }
 
     // MARK: Tone
@@ -120,7 +122,8 @@ struct ComposeView: View {
             }
             TextEditor(text: $viewModel.chinese)
                 .focused($chineseFocused)
-                .frame(minHeight: 72, maxHeight: 120)
+                .frame(minHeight: isCompact ? 40 : 72,
+                       maxHeight: isCompact ? 72 : 120)
                 .scrollContentBackground(.hidden)
         }
         .padding(8)
@@ -156,7 +159,8 @@ struct ComposeView: View {
                     get: { viewModel.english },
                     set: { viewModel.setEnglishManually($0) }
                 ))
-                .frame(minHeight: 64, maxHeight: 140)
+                .frame(minHeight: isCompact ? 44 : 64,
+                       maxHeight: isCompact ? 80 : 140)
                 .scrollContentBackground(.hidden)
             } else {
                 Text(viewModel.english.isEmpty ? " " : viewModel.english)
@@ -176,13 +180,13 @@ struct ComposeView: View {
                     .foregroundStyle(.secondary)
             }
 
-            if viewModel.canInsert && !viewModel.isEditingEnglish {
+            if viewModel.canInsert && !viewModel.isEditingEnglish && !isCompact {
                 Text("点一下即可填入聊天输入框")
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
             }
         }
-        .padding(12)
+        .padding(isCompact ? 10 : 12)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: 14)

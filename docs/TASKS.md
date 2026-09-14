@@ -46,16 +46,23 @@
 
 见 [SPEC.md §7](./SPEC.md#7-动手前必须验证的-spike)。
 
-- [ ] `Translation` framework 在 App Extension 里能否用
-- [ ] `FoundationModels` 在 App Extension 里能否用
-- [ ] 扩展里能否录音 + 语音识别
-- [ ] 扩展的实际内存上限
+- [x] `Translation` framework —— 框架支持，但中文语言包未下载（`.supported`）
+- [x] `FoundationModels` —— **不可用**，`.unavailable(.deviceNotEligible)`，区域限制，修不了
+- [ ] 扩展里能否录音 + 语音识别 —— 未验证（还没轮到语音）
+- [x] 扩展的实际内存上限 —— 容器 App 空载 10.2 MB / 跑完探针 22.8 MB
 
-**做完的标准：** 上面四条各有一个明确的「能 / 不能」，并据此在 SPEC 里划掉做不了的部分。
+**已完成（2026-09-14）。** 详见 [SPEC.md §7 实测结论](./SPEC.md#7-动手前必须验证的-spike)。
 
 ---
 
-## M3 — 离线与草稿层
+## M3 — 离线与草稿层 ❌ 已放弃
+
+> **2026-09-14 决定不做。** M2 实测后 Tier 1 机型不合格，Tier 0 只能直译 ——
+> 给不了语气控制、术语表和上下文，而"得体"正是这个项目存在的理由。
+> 为一个只能直译的离线层搭整套 router，收益不足。Parker 拍板：只用 DeepSeek。
+>
+> 换设备（非中国大陆区域、支持 Apple Intelligence）后可以重开这一节。
+> 下面的清单原样保留。
 
 目标：停手瞬间就有英文；没网也能用。
 
