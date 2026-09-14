@@ -26,9 +26,9 @@ struct ComposeView: View {
             }
             englishCard
 
-            if !isCompact {
-                Spacer(minLength: 0)
-            }
+            // 恒在。抽屉里它塌成 0；被撑到全屏时它把输入区顶到键盘上方 ——
+            // 少了它，内容会在多出来的高度里居中，上下各留一大片空白。
+            Spacer(minLength: 0)
 
             if let error = viewModel.errorMessage {
                 errorRow(error)
@@ -39,7 +39,14 @@ struct ComposeView: View {
         .padding(.horizontal, 16)
         .padding(.top, isCompact ? 8 : 12)
         .padding(.bottom, 8)
-        .onAppear { chineseFocused = true }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        // Messages composites us over the conversation, and the extension view
+        // is transparent by default — against a photo background the chips and
+        // placeholder wash out completely. This is a text tool, so legibility
+        // beats the floating look.
+        .background(Color(uiColor: .systemBackground).ignoresSafeArea())
+        // 刻意不自动聚焦：聚焦会拉起键盘，而 compact 抽屉占的就是键盘的位置，
+        // 系统只能把扩展展开成全屏。不聚焦才能真正停在抽屉态。
     }
 
     // MARK: Tone

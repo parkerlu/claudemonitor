@@ -52,10 +52,15 @@ final class MessagesViewController: MSMessagesAppViewController {
         viewModel.settings = SettingsStore.load()
     }
 
-    // Stay in the compact drawer on open. Expanding would take over the whole
-    // screen, and Messages only offers compact or full — there is no
-    // half-height style — so compact is the only way to keep the conversation
-    // you are replying to visible. Dragging the drawer up still expands.
+    // Open in the compact drawer so the conversation stays visible, and never
+    // expand on our own.
+    //
+    // Measured 2026-09-14: focusing the text field is enough to expand us. The
+    // drawer occupies the keyboard's slot, so Messages cannot show both and
+    // switches to full screen the moment a keyboard is needed. Apple's own
+    // `dismiss()` is documented as "dismiss the extension and present the
+    // keyboard" — the two states are mutually exclusive by design. So typing
+    // and seeing the transcript cannot be had at once; do not try again.
     override func didTransition(to presentationStyle: MSMessagesAppPresentationStyle) {
         super.didTransition(to: presentationStyle)
         hostingController.rootView = makeRoot(isCompact: presentationStyle == .compact)

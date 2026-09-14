@@ -10,6 +10,7 @@ struct EnDraftApp: App {
             NavigationStack {
                 SettingsView()
             }
+
         }
     }
 }
