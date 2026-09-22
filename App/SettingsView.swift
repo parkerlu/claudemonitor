@@ -62,7 +62,7 @@ struct SettingsView: View {
             }
 
             Section {
-                Picker("默认语气", selection: $settings.defaultTone) {
+                Picker("语气", selection: $settings.defaultTone) {
                     ForEach(Tone.allCases) { tone in
                         Text(tone.label).tag(tone)
                     }
@@ -79,7 +79,7 @@ struct SettingsView: View {
             } header: {
                 Text("默认行为")
             } footer: {
-                Text("回译会把英文再直译回中文，用来确认意思没跑偏。它会多花一次请求。")
+                Text("语气记的是你在插件里最后选的那个，两边是同一个值。\n回译会把英文再直译回中文，用来确认意思没跑偏。它会多花一次请求。")
             }
 
             Section {

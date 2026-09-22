@@ -16,9 +16,15 @@ final class ComposeViewModel: ObservableObject {
         didSet { scheduleTranslation() }
     }
 
+    /// Picking a tone in the composer is a lasting preference, not a per-message
+    /// one — you write to the same people in the same register most days. So the
+    /// chip writes straight back to the shared settings and becomes the tone the
+    /// next session opens on. It is the same stored value the container app's
+    /// picker edits, so the two never disagree.
     @Published var tone: Tone {
         didSet {
             guard tone != oldValue else { return }
+            persistTone()
             scheduleTranslation(immediately: true)
         }
     }
@@ -63,6 +69,20 @@ final class ComposeViewModel: ObservableObject {
 
     var canInsert: Bool {
         !english.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private func persistTone() {
+        settings.defaultTone = tone
+        SettingsStore.save(settings)
+    }
+
+    /// Re-read settings the container app may have changed while we were idle,
+    /// and follow the tone it holds.
+    func reloadSettings() {
+        settings = SettingsStore.load()
+        if tone != settings.defaultTone {
+            tone = settings.defaultTone
+        }
     }
 
     // MARK: - Translation

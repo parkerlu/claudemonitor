@@ -49,7 +49,8 @@ final class MessagesViewController: MSMessagesAppViewController {
         super.willBecomeActive(with: conversation)
         // Settings may have changed in the container app since we were last
         // alive; the extension process is long-lived enough for that to matter.
-        viewModel.settings = SettingsStore.load()
+        // This picks up the tone too, which the chips write back.
+        viewModel.reloadSettings()
     }
 
     // Go straight to full screen on open.
