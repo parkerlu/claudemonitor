@@ -3,6 +3,8 @@ import SwiftUI
 
 #if canImport(UIKit)
 import UIKit
+#elseif canImport(AppKit)
+import AppKit
 #endif
 
 /// Drives the composer: debounce, streaming translation, back-translation,
@@ -202,6 +204,10 @@ final class ComposeViewModel: ObservableObject {
     func pasteContext() {
         #if canImport(UIKit)
         if let text = UIPasteboard.general.string, !text.isEmpty {
+            context = text
+        }
+        #elseif canImport(AppKit)
+        if let text = NSPasteboard.general.string(forType: .string), !text.isEmpty {
             context = text
         }
         #endif

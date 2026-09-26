@@ -5,6 +5,8 @@ App/Info.plist
 App/EnDraft.entitlements
 MessagesExtension/Info.plist
 MessagesExtension/EnDraftMessages.entitlements
+Mac/Info.plist
+Mac/EnDraftMac.entitlements
 
 .DS_Store
 build/
