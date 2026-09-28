@@ -67,8 +67,14 @@ say "生成工程并构建 Release（Developer ID 签名 + 加固运行时）"
 
 xcodegen generate >/dev/null
 
-# 加固运行时是公证的硬性前提。手动指定签名身份，避免 automatic signing
-# 挑了 Development 证书——那样能构建成功，却过不了公证。
+# 三个都不能少：
+#   加固运行时 —— 公证的硬性前提。
+#   手动指定签名身份 —— 否则 automatic signing 会挑 Development 证书，
+#     构建照样成功，公证却过不了。
+#   关掉基础权限注入 —— Xcode 默认塞一个 com.apple.security.get-task-allow
+#     进去（允许调试器附加）。带着它必然被公证拒绝，而且 entitlements 文件里
+#     根本看不到这一条，只能从产物上 codesign -d 才查得出来。
+#     只在分发构建关，本地调试还得靠它让 Xcode 附加上来。
 xcodebuild \
     -project EnDraft.xcodeproj \
     -scheme "$SCHEME" \
@@ -79,6 +85,7 @@ xcodebuild \
     CODE_SIGN_IDENTITY="Developer ID Application" \
     DEVELOPMENT_TEAM="$TEAM_ID" \
     ENABLE_HARDENED_RUNTIME=YES \
+    CODE_SIGN_INJECT_BASE_ENTITLEMENTS=NO \
     OTHER_CODE_SIGN_FLAGS="--timestamp" \
     build 2>&1 | grep -E '(error|warning): |\*\* BUILD' | sort -u || true
 
@@ -90,6 +97,28 @@ codesign --verify --deep --strict --verbose=1 "$APP"
 codesign -d --verbose=2 "$APP" 2>&1 | grep -E 'Authority=Developer ID|flags=' | head -2
 
 # ---------------------------------------------------------------- 打包
+# 公证一个产物并等待结果。notarytool 即使判定 Invalid 也返回 0，
+# 所以必须自己看状态，否则会带着没过公证的包继续往下走。
+notarize() {
+    local target="$1" log="$BUILD_DIR/notary-$(basename "$target").txt"
+    xcrun notarytool submit "$target" --keychain-profile "$NOTARY_PROFILE" --wait 2>&1 | tee "$log"
+    if ! grep -q "status: Accepted" "$log"; then
+        local sid; sid="$(awk '/^[[:space:]]*id: /{print $2; exit}' "$log")"
+        printf '\n\033[31m公证未通过。Apple 给出的具体理由：\033[0m\n\n'
+        xcrun notarytool log "$sid" --keychain-profile "$NOTARY_PROFILE" 2>&1 | head -60
+        die "修完上面的问题再跑一次。"
+    fi
+}
+
+# 先公证并装订 App 本身，再拿装订好的 App 去打 dmg。
+# 只装订 dmg 是不够的：对方把 App 拖进「应用程序」之后，dmg 上那张票就跟它没关系了，
+# 首次启动若没网，Gatekeeper 只能在线查验，会卡住。
+say "公证 App（第 1 轮，通常 1–5 分钟）"
+ZIP="$BUILD_DIR/$APP_NAME.zip"
+ditto -c -k --keepParent "$APP" "$ZIP"
+notarize "$ZIP"
+xcrun stapler staple "$APP"
+
 say "打包 .dmg"
 mkdir -p "$OUT_DIR"
 STAGE="$BUILD_DIR/stage"
@@ -102,13 +131,16 @@ hdiutil create -volname "$APP_NAME" -srcfolder "$STAGE" \
     -ov -format UDZO -quiet "$DMG"
 
 # ---------------------------------------------------------------- 公证
-say "提交公证（通常 1–5 分钟）"
-xcrun notarytool submit "$DMG" --keychain-profile "$NOTARY_PROFILE" --wait
-
-say "装订公证票据"
-# 装订之后，对方即使离线也能通过 Gatekeeper 校验。
+say "公证 dmg（第 2 轮）"
+notarize "$DMG"
 xcrun stapler staple "$DMG"
+
+say "验收：模拟对方机器上的 Gatekeeper 裁决"
 xcrun stapler validate "$DMG"
+MNT="$(hdiutil attach "$DMG" -nobrowse -readonly | tail -1 | awk '{$1=$2=""; print $0}' | sed 's/^ *//')"
+spctl -a -vvv "$MNT/$APP_NAME.app" 2>&1 | head -3
+xcrun stapler validate "$MNT/$APP_NAME.app"
+hdiutil detach "$MNT" -quiet
 
 say "完成"
 echo "  $DMG"
