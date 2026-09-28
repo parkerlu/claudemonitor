@@ -93,6 +93,8 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.parkerlu.endraft.mac
         PRODUCT_NAME: EnDraft
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        # 公证的硬性前提。本地构建也开着，免得分发时才第一次撞上它。
+        ENABLE_HARDENED_RUNTIME: true
     entitlements:
       path: Mac/EnDraftMac.entitlements
       properties:

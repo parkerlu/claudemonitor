@@ -21,9 +21,15 @@ struct MacSettingsView: View {
                 TextField("Base URL", text: $settings.baseURL)
                 TextField("Model", text: $settings.model)
                 SecureField("API Key", text: $settings.apiKey)
-                Text("Key 只保存在这台 Mac 上。")
+                Text("Key 只保存在这台 Mac 上，不会发到别处。")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                if settings.apiKey.isEmpty, settings.provider == .deepseek {
+                    // 每个人用自己的 key，所以第一次打开的人需要知道去哪拿。
+                    Link("去 DeepSeek 申请一个 API key →",
+                         destination: URL(string: "https://platform.deepseek.com/api_keys")!)
+                        .font(.caption)
+                }
             }
 
             Section("测试") {

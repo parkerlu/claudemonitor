@@ -12,6 +12,7 @@ struct ComposerView: View {
     var onDismiss: () -> Void
 
     @FocusState private var chineseFocused: Bool
+    @State private var englishHeight: CGFloat = 0
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -24,7 +25,8 @@ struct ComposerView: View {
             footer
         }
         .padding(14)
-        .frame(minWidth: 460, minHeight: 300, alignment: .top)
+        .frame(minWidth: 460, maxWidth: .infinity,
+               minHeight: 340, maxHeight: .infinity, alignment: .top)
         .background(Color(nsColor: .windowBackgroundColor))
         .onAppear { chineseFocused = true }
         .onExitCommand { onDismiss() }
@@ -49,19 +51,33 @@ struct ComposerView: View {
                 }
             }
 
-            Text(viewModel.english.isEmpty ? " " : viewModel.english)
-                .font(.title3)
-                .textSelection(.enabled)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .contentShape(Rectangle())
-                .onTapGesture { insert() }
+            // 随内容长高，到上限后内部滚动。少了 fixedSize，Text 在高度不够时
+            // 会截断成一行加省略号，而不是换行 —— 长句子根本读不到。
+            ScrollView {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(viewModel.english.isEmpty ? " " : viewModel.english)
+                        .font(.title3)
+                        .textSelection(.enabled)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .contentShape(Rectangle())
+                        .onTapGesture { insert() }
 
-            if !viewModel.backTranslation.isEmpty {
-                Divider()
-                Text(viewModel.backTranslation)
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
+                    if !viewModel.backTranslation.isEmpty {
+                        Divider()
+                        Text(viewModel.backTranslation)
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
+                .background(GeometryReader { geo in
+                    Color.clear.preference(key: ContentHeightKey.self, value: geo.size.height)
+                })
             }
+            .frame(height: min(max(englishHeight, 30), 260))
+            .onPreferenceChange(ContentHeightKey.self) { englishHeight = $0 }
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -113,7 +129,7 @@ struct ComposerView: View {
             TextEditor(text: $viewModel.chinese)
                 .focused($chineseFocused)
                 .font(.title3)
-                .frame(minHeight: 64, maxHeight: 120)
+                .frame(minHeight: 72, maxHeight: 200)
                 .scrollContentBackground(.hidden)
         }
         .padding(6)
@@ -175,3 +191,13 @@ struct ComposerView: View {
         onInsert(viewModel.english)
     }
 }
+
+/// ScrollView 会把给它的高度吃满，所以得先量出内容多高，才能让卡片
+/// 短句时贴合、长句时才开始滚。
+private struct ContentHeightKey: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
+    }
+}
+

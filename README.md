@@ -40,6 +40,31 @@ macOS **没有** iMessage 扩展这个东西 —— `Messages.framework` 在 iOS
 - Mac 端的设置（key、语气、术语表）是独立的一份 —— 跟 iPhone 之间没有 App Group 可共享，
   key 要在 Mac 上再填一次。
 
+## 把 Mac 版发给别人
+
+```
+scripts/package-mac.sh            # 出 dist/EnDraft-<日期>.dmg
+```
+
+脚本做四件事：Developer ID 签名 → 打 .dmg → 提交公证 → 装订票据。
+对方双击挂载、拖进「应用程序」就能用，**不会看到「无法验证开发者」**。
+没有公证的话对方会被 Gatekeeper 拦下，还得教他右键打开，那种链接发出去基本等于没发。
+
+首次运行前有两步账号操作，脚本会检查并告诉你怎么补：
+
+1. **Developer ID Application 证书**（付费账号才有这一项）
+   Xcode → Settings → Accounts → Manage Certificates… → `+` → Developer ID Application
+   注意它跟日常用的 Apple Development 不是一回事：后者签出来的 App 只能在你自己注册过的机器上跑。
+2. **公证凭据**（存一次，以后不用管）
+   先在 <https://appleid.apple.com> 生成一个 App 专用密码，然后
+   `xcrun notarytool store-credentials endraft-notary --apple-id <你的AppleID> --team-id 5X3QDNMZ83 --password <专用密码>`
+
+**对方需要自己的 DeepSeek key。** 设置页在 key 为空时会直接给出申请链接。
+这是刻意的：不做代理后端，你就不用替别人的用量付钱，也不用管限流和防滥用。
+
+> iPhone 版没有对应的分发方式。TestFlight 要建 App Store Connect 记录、传构建版、
+> 外部测试者还要过 Beta App Review，而且 90 天一过期就得重传。目前只分发 Mac 版。
+
 ## 交互
 
 ```

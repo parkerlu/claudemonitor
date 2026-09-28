@@ -62,8 +62,8 @@ final class ComposerController: NSObject, NSWindowDelegate {
 
     private func makePanel() -> ComposerPanel {
         let panel = ComposerPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 460, height: 300),
-            styleMask: [.titled, .closable, .fullSizeContentView, .utilityWindow],
+            contentRect: NSRect(x: 0, y: 0, width: 480, height: 420),
+            styleMask: [.titled, .closable, .resizable, .fullSizeContentView, .utilityWindow],
             backing: .buffered,
             defer: false
         )
