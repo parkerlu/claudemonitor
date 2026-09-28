@@ -14,13 +14,9 @@ struct EnDraftMacApp: App {
         MenuBarExtra("EnDraft", systemImage: "character.bubble") {
             Button("写一句…  ⌥Space") { delegate.composer.show() }
             Divider()
-            SettingsLink { Text("设置…") }
+            Button("设置…") { delegate.showSettings() }
             Divider()
             Button("退出 EnDraft") { NSApplication.shared.terminate(nil) }
-        }
-
-        Settings {
-            MacSettingsView()
         }
     }
 }
@@ -28,6 +24,38 @@ struct EnDraftMacApp: App {
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     let composer = ComposerController()
+
+    private var settingsWindow: NSWindow?
+
+    /// Owns the settings window directly instead of using SwiftUI's `Settings`
+    /// scene and `SettingsLink`.
+    ///
+    /// LSUIElement apps are not activated by clicking a menu-bar item, and this
+    /// SDK's SettingsLink has no preAction/postAction hook to activate from — so
+    /// the scene's window opened without ever coming to the front, which looks
+    /// exactly like the menu item doing nothing. An NSWindow we activate
+    /// ourselves is the same pattern the composer panel already uses.
+    func showSettings() {
+        let window = settingsWindow ?? makeSettingsWindow()
+        settingsWindow = window
+        NSApp.activate(ignoringOtherApps: true)
+        window.makeKeyAndOrderFront(nil)
+    }
+
+    private func makeSettingsWindow() -> NSWindow {
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 460, height: 560),
+            styleMask: [.titled, .closable, .miniaturizable],
+            backing: .buffered,
+            defer: false
+        )
+        window.title = "EnDraft 设置"
+        window.contentView = NSHostingView(rootView: MacSettingsView())
+        // Closing settings must not destroy the window, or reopening it crashes.
+        window.isReleasedWhenClosed = false
+        window.center()
+        return window
+    }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         composer.start()
