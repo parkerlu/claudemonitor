@@ -1,5 +1,6 @@
 import AppKit
 import Carbon.HIToolbox
+import Combine
 import SwiftUI
 
 /// A panel that can take keyboard focus. `NSPanel` refuses to become key by
@@ -20,8 +21,10 @@ final class ComposerPanel: NSPanel {
 final class ComposerController: NSObject, NSWindowDelegate {
 
     private let viewModel = ComposeViewModel()
+    private let ui = ComposerUIState()
     private var panel: ComposerPanel?
     private var hotKey: GlobalHotKey?
+    private var cancellables = Set<AnyCancellable>()
 
     /// Whatever was frontmost when we were summoned. We hand focus back to it
     /// before pasting, otherwise the keystroke lands on our own panel.
@@ -34,6 +37,14 @@ final class ComposerController: NSObject, NSWindowDelegate {
         ) { [weak self] in
             Task { @MainActor in self?.toggle() }
         }
+
+        // 左右排列要的是「窗口更宽」，光换视图排布不够，得把窗口一起改掉。
+        ui.$isSideBySide
+            .removeDuplicates()
+            .sink { [weak self] _ in
+                Task { @MainActor in self?.applyWindowSize() }
+            }
+            .store(in: &cancellables)
     }
 
     var hotKeyRegistered: Bool { hotKey != nil }
@@ -62,7 +73,7 @@ final class ComposerController: NSObject, NSWindowDelegate {
 
     private func makePanel() -> ComposerPanel {
         let panel = ComposerPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 480, height: 420),
+            contentRect: NSRect(origin: .zero, size: ui.windowSize),
             styleMask: [.titled, .closable, .resizable, .fullSizeContentView, .utilityWindow],
             backing: .buffered,
             defer: false
@@ -78,6 +89,7 @@ final class ComposerController: NSObject, NSWindowDelegate {
         panel.contentView = NSHostingView(
             rootView: ComposerView(
                 viewModel: viewModel,
+                ui: ui,
                 onInsert: { [weak self] text in self?.insert(text) },
                 onDismiss: { [weak self] in self?.hide() }
             )
@@ -99,6 +111,22 @@ final class ComposerController: NSObject, NSWindowDelegate {
         panel.setFrameOrigin(origin)
     }
 
+    /// 改尺寸时锚住左上角。默认行为是锚左下角，切换排布时窗口会整个往上蹿。
+    private func applyWindowSize() {
+        guard let panel else { return }
+        let size = ui.windowSize
+        var frame = panel.frame
+        let topLeft = NSPoint(x: frame.minX, y: frame.maxY)
+        frame.size = size
+        frame.origin = NSPoint(x: topLeft.x, y: topLeft.y - size.height)
+
+        if let visible = panel.screen?.visibleFrame {
+            frame.origin.x = min(max(frame.minX, visible.minX + 12), visible.maxX - size.width - 12)
+            frame.origin.y = min(max(frame.minY, visible.minY + 12), visible.maxY - size.height - 12)
+        }
+        panel.setFrame(frame, display: true, animate: true)
+    }
+
     // MARK: - Inserting
 
     private func insert(_ text: String) {
@@ -107,7 +135,8 @@ final class ComposerController: NSObject, NSWindowDelegate {
         pasteboard.setString(text, forType: .string)
 
         viewModel.reset()
-        hide()
+        // 钉住的意义就是连着写下一句，这时收起来等于白钉。
+        if !ui.isPinned { hide() }
         previousApp?.activate()
 
         guard AXIsProcessTrusted() else {
@@ -156,7 +185,9 @@ final class ComposerController: NSObject, NSWindowDelegate {
     // MARK: - NSWindowDelegate
 
     func windowDidResignKey(_ notification: Notification) {
-        // Clicking away means you went back to what you were doing.
+        // Clicking away means you went back to what you were doing — unless you
+        // pinned the panel, which is exactly the request not to do this.
+        guard !ui.isPinned else { return }
         hide()
     }
 }

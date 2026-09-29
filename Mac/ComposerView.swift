@@ -2,11 +2,13 @@ import SwiftUI
 
 /// The floating composer.
 ///
-/// Same shape as the iPhone one — what you read on top, what you type at the
-/// bottom — but driven by the keyboard, because on a Mac your hands are already
-/// there: ⌘↩ inserts, ⌘1–4 switch tone, Esc puts it away.
+/// Keyboard-driven, because on a Mac your hands are already there: ⌘↩ sends,
+/// ⌘1–4 switch tone, Esc puts it away. Everything reachable by key is also a
+/// button, since the panel is often used with the pointer while reading a
+/// conversation in another window.
 struct ComposerView: View {
     @ObservedObject var viewModel: ComposeViewModel
+    @ObservedObject var ui: ComposerUIState
 
     var onInsert: (String) -> Void
     var onDismiss: () -> Void
@@ -16,20 +18,61 @@ struct ComposerView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            englishCard
+            header
+
+            if ui.isSideBySide {
+                HStack(alignment: .top, spacing: 12) {
+                    chineseField.frame(maxWidth: .infinity, alignment: .top)
+                    englishCard.frame(maxWidth: .infinity, alignment: .top)
+                }
+            } else {
+                englishCard
+                chineseField
+            }
+
             if let error = viewModel.errorMessage {
                 errorRow(error)
             }
             toneChips
-            chineseField
             footer
         }
         .padding(14)
-        .frame(minWidth: 460, maxWidth: .infinity,
-               minHeight: 340, maxHeight: .infinity, alignment: .top)
+        .frame(minWidth: 440, maxWidth: .infinity,
+               minHeight: 300, maxHeight: .infinity, alignment: .top)
         .background(Color(nsColor: .windowBackgroundColor))
         .onAppear { chineseFocused = true }
         .onExitCommand { onDismiss() }
+    }
+
+    // MARK: Header
+
+    /// Sits to the right of the window's close button, which the panel keeps
+    /// even with its title hidden.
+    private var header: some View {
+        HStack(spacing: 10) {
+            Spacer()
+
+            Button {
+                ui.isSideBySide.toggle()
+            } label: {
+                Image(systemName: ui.isSideBySide
+                      ? "rectangle.split.1x2" : "rectangle.split.2x1")
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(.secondary)
+            .help(ui.isSideBySide ? "改为上下排列" : "改为左右排列（窗口变宽）")
+
+            Button {
+                ui.isPinned.toggle()
+            } label: {
+                Image(systemName: ui.isPinned ? "pin.fill" : "pin")
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(ui.isPinned ? Color.accentColor : .secondary)
+            .help(ui.isPinned
+                  ? "已钉住：点窗外不收起，发送后也留在屏幕上"
+                  : "钉住：点窗外不收起，发送后也不消失")
+        }
     }
 
     // MARK: English
@@ -44,11 +87,6 @@ struct ComposerView: View {
                     ProgressView().controlSize(.small)
                 }
                 Spacer()
-                if viewModel.canInsert {
-                    Text("⌘↩ 插入")
-                        .font(.caption2)
-                        .foregroundStyle(.tertiary)
-                }
             }
 
             // 随内容长高，到上限后内部滚动。少了 fixedSize，Text 在高度不够时
@@ -76,7 +114,7 @@ struct ComposerView: View {
                     Color.clear.preference(key: ContentHeightKey.self, value: geo.size.height)
                 })
             }
-            .frame(height: min(max(englishHeight, 30), 260))
+            .frame(height: min(max(englishHeight, 30), ui.isSideBySide ? 190 : 260))
             .onPreferenceChange(ContentHeightKey.self) { englishHeight = $0 }
         }
         .padding(12)
@@ -129,7 +167,8 @@ struct ComposerView: View {
             TextEditor(text: $viewModel.chinese)
                 .focused($chineseFocused)
                 .font(.title3)
-                .frame(minHeight: 72, maxHeight: 200)
+                .frame(minHeight: ui.isSideBySide ? 190 : 72,
+                       maxHeight: ui.isSideBySide ? 190 : 200)
                 .scrollContentBackground(.hidden)
         }
         .padding(6)
@@ -158,17 +197,18 @@ struct ComposerView: View {
             }
 
             Spacer()
+
             Text("Esc 收起")
                 .font(.caption2)
                 .foregroundStyle(.tertiary)
 
-            // Not a visible button — just somewhere to hang ⌘↩, since the
-            // English card is a tap target rather than a control.
-            Button("", action: insert)
+            // Carries ⌘↩ as well, so the shortcut and the button can never drift
+            // apart. It pastes into whatever you were typing in; the actual send
+            // is still your keystroke over there.
+            Button("发送  ⌘↩") { insert() }
                 .keyboardShortcut(.return, modifiers: .command)
-                .opacity(0)
-                .frame(width: 0, height: 0)
-                .accessibilityHidden(true)
+                .buttonStyle(.borderedProminent)
+                .disabled(!viewModel.canInsert)
         }
     }
 
@@ -200,4 +240,3 @@ private struct ContentHeightKey: PreferenceKey {
         value = max(value, nextValue())
     }
 }
-
