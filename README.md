@@ -40,11 +40,16 @@ macOS **没有** iMessage 扩展这个东西 —— `Messages.framework` 在 iOS
 - Mac 端的设置（key、语气、术语表）是独立的一份 —— 跟 iPhone 之间没有 App Group 可共享，
   key 要在 Mac 上再填一次。
 
-## 把 Mac 版发给别人
+## Mac 版：装给自己 / 发给别人
 
 ```
-scripts/package-mac.sh            # 出 dist/EnDraft-<日期>.dmg
+scripts/install-mac.sh            # 自己用：构建 + 装进 /Applications，约 30 秒
+scripts/package-mac.sh            # 给别人：出 dist/EnDraft-<日期>.dmg，要等公证
 ```
+
+日常改代码用前者。它照样用 Developer ID 签名——本地跑并不需要，但 TCC 是按
+「bundle ID + 签名身份」记住授权的，换个身份签，辅助功能的勾就会被撤销，
+每次改完都得重新去系统设置点一遍。
 
 脚本做四件事：Developer ID 签名 → 打 .dmg → 提交公证 → 装订票据。
 对方双击挂载、拖进「应用程序」就能用，**不会看到「无法验证开发者」**。
